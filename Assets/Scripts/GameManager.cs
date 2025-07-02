@@ -1,65 +1,61 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.InputSystem;
 
+[DefaultExecutionOrder(-100)]
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
     [Header("UI Panels")]
-    public GameObject menuPanel;
-    public GameObject gamePanel;
-    public GameObject pausePanel;
-    public GameObject endPanel;
+    [SerializeField] private GameObject menuPanel;
+    [SerializeField] private GameObject gamePanel;
+    [SerializeField] private GameObject pausePanel;
+    [SerializeField] private GameObject endPanel;
+
+    [Header("References")]
+    [SerializeField] private Transform cardSpawnPoint;
 
     public bool IsGameActive { get; private set; }
-
+    private Keyboard keyboard;
     private string currentSceneName;
 
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
             return;
         }
 
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        keyboard = Keyboard.current;
         currentSceneName = SceneManager.GetActiveScene().name;
     }
 
-    private void Start()
+    private void OnEnable() => SubscribeEvents();
+    private void OnDisable() => UnsubscribeEvents();
+
+    private void SubscribeEvents()
     {
-        InitializeGame();
+        keyboard.onTextInput += HandleKeyboardInput;
     }
 
-    private void Update()
+    private void UnsubscribeEvents()
     {
-        if (Input.GetKeyDown(KeyCode.Escape) && IsGameActive)
-        {
-            TogglePause();
-        }
+        keyboard.onTextInput -= HandleKeyboardInput;
     }
 
-    private void InitializeGame()
+    private void HandleKeyboardInput(char ch)
     {
-        menuPanel.SetActive(true);
-        gamePanel.SetActive(false);
-        pausePanel.SetActive(false);
-        endPanel.SetActive(false);
-        IsGameActive = false;
-        Time.timeScale = 1f;
+        if (ch == ' ' && IsGameActive)
+            CardManager.Instance.DrawCard();
     }
 
     public void StartGame()
     {
-        menuPanel.SetActive(false);
-        gamePanel.SetActive(true);
-        pausePanel.SetActive(false);
-        endPanel.SetActive(false);
+        TogglePanels(menu: false, game: true);
         IsGameActive = true;
         Time.timeScale = 1f;
         CardManager.Instance.ResetDeck();
@@ -72,28 +68,13 @@ public class GameManager : MonoBehaviour
         Time.timeScale = shouldPause ? 0f : 1f;
     }
 
-    public void ShowEndGame()
+    private void TogglePanels(bool menu, bool game, bool pause = false, bool end = false)
     {
-        endPanel.SetActive(true);
-        IsGameActive = false;
+        menuPanel.SetActive(menu);
+        gamePanel.SetActive(game);
+        pausePanel.SetActive(pause);
+        endPanel.SetActive(end);
     }
 
-    public void ResetGame()
-    {
-        SceneManager.LoadScene(currentSceneName);
-    }
-
-    public void ReturnToMenu()
-    {
-        SceneManager.LoadScene(currentSceneName);
-    }
-
-    public void QuitGame()
-    {
-        #if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-        #else
-        Application.Quit();
-        #endif
-    }
+    public void ResetGame() => SceneManager.LoadScene(currentSceneName);
 }

@@ -4,6 +4,7 @@ using TMPro;
 
 public class CategoryButton : MonoBehaviour
 {
+    [Header("UI References")]
     [SerializeField] private Image icon;
     [SerializeField] private TextMeshProUGUI label;
     [SerializeField] private Image disabledOverlay;
@@ -13,13 +14,13 @@ public class CategoryButton : MonoBehaviour
     private void Awake()
     {
         GetComponent<Button>().onClick.AddListener(ToggleCategory);
+        UpdateVisuals();
     }
 
-    public void Initialize(Sprite iconSprite, string categoryName)
+    public void Initialize(Sprite iconSprite, string buttonText)
     {
         icon.sprite = iconSprite;
-        label.text = categoryName;
-        UpdateVisuals();
+        label.text = buttonText;
     }
 
     private void ToggleCategory()

@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Pool;
+using UnityEngine.UI;
 
+[DefaultExecutionOrder(-90)]
 public class CardManager : MonoBehaviour
 {
     public static CardManager Instance { get; private set; }
@@ -9,76 +12,118 @@ public class CardManager : MonoBehaviour
     public class CardCategory
     {
         public string name;
-        public GameObject cardBackPrefab;
-        public List<string> cards = new List<string>();
-        public CategoryButton buttonReference;
+        public GameObject categoryBackPrefab;
+        public GameObject[] cardPrefabs;
+        public Button categoryButton;
+        public GameObject selectionEffectPrefab;
+        [HideInInspector] public ObjectPool<GameObject> cardPool;
     }
 
-    [SerializeField] private List<CardCategory> allCategories;
-    private Dictionary<CardCategory, List<string>> availableCards = new Dictionary<CardCategory, List<string>>();
-    private GameObject currentCard;
+    [Header("Settings")]
+    [SerializeField] private Transform cardSpawnPoint;
+    [SerializeField] private GameObject cardRevealEffectPrefab;
+    [SerializeField] private List<CardCategory> categories;
+
+    private Dictionary<CardCategory, Queue<GameObject>> availableCards;
+    private GameObject currentCardObject;
+    private CardCategory currentCategory;
 
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        InitializePools();
+    }
+
+    private void InitializePools()
+    {
+        availableCards = new Dictionary<CardCategory, Queue<GameObject>>();
+
+        foreach (var category in categories)
+        {
+            var queue = new Queue<GameObject>(category.cardPrefabs);
+            availableCards.Add(category, queue);
+
+            category.cardPool = new ObjectPool<GameObject>(
+                createFunc: () => Instantiate(category.categoryBackPrefab),
+                actionOnGet: (obj) => obj.SetActive(true),
+                actionOnRelease: (obj) => obj.SetActive(false),
+                actionOnDestroy: (obj) => Destroy(obj)
+            );
+        }
+    }
+
+    public void SelectCategory()
+    {
+        ReleaseCurrentCard();
+
+        foreach (var category in categories)
+        {
+            var button = category.categoryButton.GetComponent<CategoryButton>();
+            if (button != null && button.IsEnabled && availableCards[category].Count > 0)
+            {
+                currentCategory = category;
+                SpawnWithEffect(category.selectionEffectPrefab);
+                currentCardObject = category.cardPool.Get();
+                currentCardObject.transform.SetPositionAndRotation(
+                    cardSpawnPoint.position, 
+                    cardSpawnPoint.rotation
+                );
+                return;
+            }
+        }
+        
+        GameManager.Instance.ShowEndGame();
+    }
+
+    private void SpawnWithEffect(GameObject effectPrefab)
+    {
+        if (effectPrefab != null)
+        {
+            var effect = Instantiate(effectPrefab, cardSpawnPoint.position, Quaternion.identity);
+            Destroy(effect, 2f); // Auto-cleanup
+        }
+    }
+
+    public void DrawCard()
+    {
+        if (currentCategory == null || availableCards[currentCategory].Count == 0)
+        {
+            SelectCategory();
+            return;
+        }
+
+        SpawnWithEffect(cardRevealEffectPrefab);
+        ReleaseCurrentCard();
+
+        int randomIndex = Random.Range(0, availableCards[currentCategory].Count);
+        currentCardObject = Instantiate(
+            availableCards[currentCategory].Dequeue(),
+            cardSpawnPoint.position,
+            cardSpawnPoint.rotation
+        );
+    }
+
+    private void ReleaseCurrentCard()
+    {
+        if (currentCardObject != null)
+        {
+            if (currentCategory != null && currentCategory.cardPool != null)
+                currentCategory.cardPool.Release(currentCardObject);
+            else
+                Destroy(currentCardObject);
         }
     }
 
     public void ResetDeck()
     {
-        availableCards.Clear();
-        foreach (var category in allCategories)
-        {
-            if (category.buttonReference.IsCategoryEnabled())
-            {
-                availableCards.Add(category, new List<string>(category.cards));
-            }
-        }
-        
-        if(currentCard != null) Destroy(currentCard);
-    }
-
-    public void DrawCard()
-    {
-        if (!TryGetRandomCategory(out CardCategory category))
-        {
-            GameManager.Instance.ShowEndGame();
-            return;
-        }
-
-        if(currentCard != null) Destroy(currentCard);
-        
-        currentCard = Instantiate(category.cardBackPrefab);
-        currentCard.GetComponent<CardController>().Initialize(GetRandomCard(category));
-    }
-
-    private bool TryGetRandomCategory(out CardCategory category)
-    {
-        var activeCategories = new List<CardCategory>(availableCards.Keys);
-        activeCategories.RemoveAll(c => availableCards[c].Count == 0);
-        
-        if (activeCategories.Count == 0)
-        {
-            category = null;
-            return false;
-        }
-
-        category = activeCategories[Random.Range(0, activeCategories.Count)];
-        return true;
-    }
-
-    private string GetRandomCard(CardCategory category)
-    {
-        int randomIndex = Random.Range(0, availableCards[category].Count);
-        string cardText = availableCards[category][randomIndex];
-        availableCards[category].RemoveAt(randomIndex);
-        return cardText;
+        ReleaseCurrentCard();
+        currentCategory = null;
+        InitializePools();
     }
 }
