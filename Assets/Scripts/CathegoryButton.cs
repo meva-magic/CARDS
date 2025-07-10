@@ -2,25 +2,29 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+[RequireComponent(typeof(Button))]
 public class CategoryButton : MonoBehaviour
 {
-    [Header("UI References")]
+    [Header("References")]
     [SerializeField] private Image icon;
     [SerializeField] private TextMeshProUGUI label;
     [SerializeField] private Image disabledOverlay;
-    
+
+    private Button button;
     private bool isEnabled = true;
 
     private void Awake()
     {
-        GetComponent<Button>().onClick.AddListener(ToggleCategory);
+        button = GetComponent<Button>();
+        button.onClick.AddListener(OnButtonPressed);
         UpdateVisuals();
     }
 
-    public void Initialize(Sprite iconSprite, string buttonText)
+    private void OnButtonPressed()
     {
-        icon.sprite = iconSprite;
-        label.text = buttonText;
+        Vibration.VibratePeek();
+        Shake.instance.CamShake();
+        ToggleCategory();
     }
 
     private void ToggleCategory()
@@ -31,8 +35,9 @@ public class CategoryButton : MonoBehaviour
 
     private void UpdateVisuals()
     {
-        disabledOverlay.gameObject.SetActive(!isEnabled);
+        if (disabledOverlay != null)
+            disabledOverlay.gameObject.SetActive(!isEnabled);
     }
 
-    public bool IsCategoryEnabled() => isEnabled;
+    public bool IsEnabled => isEnabled;
 }

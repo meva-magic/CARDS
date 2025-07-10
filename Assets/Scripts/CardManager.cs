@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Pool;
-using UnityEngine.UI;
 
 [DefaultExecutionOrder(-90)]
 public class CardManager : MonoBehaviour
@@ -14,16 +12,13 @@ public class CardManager : MonoBehaviour
         public string name;
         public GameObject categoryBackPrefab;
         public GameObject[] cardPrefabs;
-        public Button categoryButton;
-        public GameObject selectionEffectPrefab;
-        [HideInInspector] public ObjectPool<GameObject> cardPool;
     }
 
     [Header("Settings")]
-    [SerializeField] private Transform cardSpawnPoint;
-    [SerializeField] private GameObject cardRevealEffectPrefab;
     [SerializeField] private List<CardCategory> categories;
-
+    [SerializeField] private Transform cardSpawnPoint;
+    [SerializeField] private int drawVibrationDuration = 50;
+    
     private Dictionary<CardCategory, Queue<GameObject>> availableCards;
     private GameObject currentCardObject;
     private CardCategory currentCategory;
@@ -37,24 +32,16 @@ public class CardManager : MonoBehaviour
         }
 
         Instance = this;
-        InitializePools();
+        InitializeDeck();
     }
 
-    private void InitializePools()
+    private void InitializeDeck()
     {
         availableCards = new Dictionary<CardCategory, Queue<GameObject>>();
-
         foreach (var category in categories)
         {
             var queue = new Queue<GameObject>(category.cardPrefabs);
             availableCards.Add(category, queue);
-
-            category.cardPool = new ObjectPool<GameObject>(
-                createFunc: () => Instantiate(category.categoryBackPrefab),
-                actionOnGet: (obj) => obj.SetActive(true),
-                actionOnRelease: (obj) => obj.SetActive(false),
-                actionOnDestroy: (obj) => Destroy(obj)
-            );
         }
     }
 
@@ -64,29 +51,15 @@ public class CardManager : MonoBehaviour
 
         foreach (var category in categories)
         {
-            var button = category.categoryButton.GetComponent<CategoryButton>();
-            if (button != null && button.IsEnabled && availableCards[category].Count > 0)
+            if (availableCards[category].Count > 0)
             {
                 currentCategory = category;
-                SpawnWithEffect(category.selectionEffectPrefab);
-                currentCardObject = category.cardPool.Get();
-                currentCardObject.transform.SetPositionAndRotation(
-                    cardSpawnPoint.position, 
-                    cardSpawnPoint.rotation
-                );
+                currentCardObject = Instantiate(category.categoryBackPrefab, cardSpawnPoint);
+                
+                Vibration.VibratePeek();
+                Shake.instance.CamShake();
                 return;
             }
-        }
-        
-        GameManager.Instance.ShowEndGame();
-    }
-
-    private void SpawnWithEffect(GameObject effectPrefab)
-    {
-        if (effectPrefab != null)
-        {
-            var effect = Instantiate(effectPrefab, cardSpawnPoint.position, Quaternion.identity);
-            Destroy(effect, 2f); // Auto-cleanup
         }
     }
 
@@ -98,7 +71,6 @@ public class CardManager : MonoBehaviour
             return;
         }
 
-        SpawnWithEffect(cardRevealEffectPrefab);
         ReleaseCurrentCard();
 
         int randomIndex = Random.Range(0, availableCards[currentCategory].Count);
@@ -107,16 +79,16 @@ public class CardManager : MonoBehaviour
             cardSpawnPoint.position,
             cardSpawnPoint.rotation
         );
+        
+        Vibration.Vibrate(drawVibrationDuration);
+        Shake.instance.CamShake();
     }
 
     private void ReleaseCurrentCard()
     {
         if (currentCardObject != null)
         {
-            if (currentCategory != null && currentCategory.cardPool != null)
-                currentCategory.cardPool.Release(currentCardObject);
-            else
-                Destroy(currentCardObject);
+            Destroy(currentCardObject);
         }
     }
 
@@ -124,6 +96,6 @@ public class CardManager : MonoBehaviour
     {
         ReleaseCurrentCard();
         currentCategory = null;
-        InitializePools();
+        InitializeDeck();
     }
 }
