@@ -50,12 +50,6 @@ public class GameManager : MonoBehaviour
 
     public void StartGame()
     {
-        if (CardManager.Instance == null)
-        {
-            Debug.LogError("CardManager not initialized!");
-            return;
-        }
-
         isGameActive = true;
         isPaused = false;
         Time.timeScale = 1f;
@@ -65,7 +59,7 @@ public class GameManager : MonoBehaviour
         pausePanel.SetActive(false);
         gamePanel.SetActive(true);
         
-        CardManager.Instance.InitializeDeck();
+        CardManager.Instance.ResetDeck(); // Initialize the deck
     }
 
     public void TogglePause()

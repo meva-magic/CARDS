@@ -9,11 +9,18 @@ public class ShakeDetector : MonoBehaviour
 
     private void Start()
     {
+        if (Shake.instance == null)
+        {
+            Debug.LogError("Shake instance not found!");
+            enabled = false;
+            return;
+        }
+
         sqrShakeThreshold = Mathf.Pow(shakeThreshold, 2);
         
         spaceAction = new InputAction(binding: "<Keyboard>/space");
         spaceAction.Enable();
-        spaceAction.performed += _ => OnShake();
+        spaceAction.performed += OnShakePerformed;
     }
 
     private void Update()
@@ -26,23 +33,26 @@ public class ShakeDetector : MonoBehaviour
         }
     }
 
+    private void OnShakePerformed(InputAction.CallbackContext context)
+    {
+        OnShake();
+    }
+
     private void OnShake()
     {
-        if (GameManager.Instance != null && 
-            GameManager.Instance.IsGameActive() && 
-            CardManager.Instance != null)
-        {
-            CardManager.Instance.DrawCard();
-            Vibration.VibratePeek();
-            Shake.instance.ScreenShake();
-        }
+        if (GameManager.Instance == null || !GameManager.Instance.IsGameActive() || CardManager.Instance == null)
+            return;
+
+        CardManager.Instance.DrawCard();
+        Vibration.VibratePeek();
+        Shake.instance.ScreenShake();
     }
 
     private void OnDestroy()
     {
         if (spaceAction != null)
         {
-            spaceAction.performed -= _ => OnShake();
+            spaceAction.performed -= OnShakePerformed;
             spaceAction.Dispose();
         }
     }

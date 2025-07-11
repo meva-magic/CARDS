@@ -33,7 +33,7 @@ public class CardManager : MonoBehaviour
         }
     }
 
-    public void InitializeDeck()
+    public void ResetDeck()
     {
         ClearCurrentCard();
         selectedCategory = null;
@@ -64,12 +64,20 @@ public class CardManager : MonoBehaviour
                 cardSpawnPoint.rotation,
                 cardSpawnPoint
             );
-            
-            // Ensure the card back can be clicked
+
+            // Ensure the card can be clicked
             var controller = currentCard.GetComponent<CardController>();
             if (controller == null)
             {
                 controller = currentCard.AddComponent<CardController>();
+            }
+
+            // Add collider if missing
+            var collider = currentCard.GetComponent<BoxCollider2D>();
+            if (collider == null)
+            {
+                collider = currentCard.AddComponent<BoxCollider2D>();
+                collider.size = new Vector2(100f, 150f); // Set to your card size
             }
         }
     }
@@ -78,10 +86,11 @@ public class CardManager : MonoBehaviour
     {
         if (currentCard == null || selectedCategory == null || 
             selectedCategory.cardFacePrefabs == null || 
-            selectedCategory.cardFacePrefabs.Count == 0) return;
+            selectedCategory.cardFacePrefabs.Count == 0)
+            return;
 
-        Vector3 spawnPos = cardSpawnPoint.position;
-        Quaternion spawnRot = cardSpawnPoint.rotation;
+        Vector3 position = cardSpawnPoint.position;
+        Quaternion rotation = cardSpawnPoint.rotation;
         Transform parent = cardSpawnPoint;
 
         Destroy(currentCard);
@@ -89,8 +98,8 @@ public class CardManager : MonoBehaviour
         int randomIndex = Random.Range(0, selectedCategory.cardFacePrefabs.Count);
         currentCard = Instantiate(
             selectedCategory.cardFacePrefabs[randomIndex],
-            spawnPos,
-            spawnRot,
+            position,
+            rotation,
             parent
         );
         selectedCategory.cardFacePrefabs.RemoveAt(randomIndex);
@@ -111,5 +120,15 @@ public class CardManager : MonoBehaviour
             Destroy(currentCard);
             currentCard = null;
         }
+    }
+
+    public bool HasCardsRemaining()
+    {
+        foreach (var category in categories)
+        {
+            if (category.isEnabled && category.cardFacePrefabs.Count > 0)
+                return true;
+        }
+        return false;
     }
 }
