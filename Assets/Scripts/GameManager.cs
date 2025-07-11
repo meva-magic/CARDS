@@ -84,7 +84,7 @@ public class GameManager : MonoBehaviour
         isPaused = true;
         Time.timeScale = 0f;
         
-        gamePanel.SetActive(false);
+        // Only activate pause panel - game panel remains active
         pausePanel.SetActive(true);
         
         Vibration.VibratePop();
@@ -99,8 +99,8 @@ public class GameManager : MonoBehaviour
         isPaused = false;
         Time.timeScale = 1f;
         
+        // Only deactivate pause panel - game panel stays active
         pausePanel.SetActive(false);
-        gamePanel.SetActive(true);
         
         Vibration.VibratePeek();
         if (Shake.instance != null)
