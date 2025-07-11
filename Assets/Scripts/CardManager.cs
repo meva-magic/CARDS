@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[DefaultExecutionOrder(-90)]
 public class CardManager : MonoBehaviour
 {
     public static CardManager Instance { get; private set; }
@@ -10,92 +9,107 @@ public class CardManager : MonoBehaviour
     public class CardCategory
     {
         public string name;
-        public GameObject categoryBackPrefab;
-        public GameObject[] cardPrefabs;
+        public bool isEnabled = true;
+        public GameObject cardBackPrefab;
+        public List<GameObject> cardFacePrefabs;
     }
 
-    [Header("Settings")]
-    [SerializeField] private List<CardCategory> categories;
+    [Header("References")]
     [SerializeField] private Transform cardSpawnPoint;
-    [SerializeField] private int drawVibrationDuration = 50;
-    
-    private Dictionary<CardCategory, Queue<GameObject>> availableCards;
-    private GameObject currentCardObject;
-    private CardCategory currentCategory;
+    [SerializeField] private List<CardCategory> categories = new();
+
+    private GameObject currentCard;
+    private CardCategory selectedCategory;
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
         {
             Destroy(gameObject);
-            return;
-        }
-
-        Instance = this;
-        InitializeDeck();
-    }
-
-    private void InitializeDeck()
-    {
-        availableCards = new Dictionary<CardCategory, Queue<GameObject>>();
-        foreach (var category in categories)
-        {
-            var queue = new Queue<GameObject>(category.cardPrefabs);
-            availableCards.Add(category, queue);
         }
     }
 
-    public void SelectCategory()
+    public void InitializeDeck()
     {
-        ReleaseCurrentCard();
-
-        foreach (var category in categories)
-        {
-            if (availableCards[category].Count > 0)
-            {
-                currentCategory = category;
-                currentCardObject = Instantiate(category.categoryBackPrefab, cardSpawnPoint);
-                
-                Vibration.VibratePeek();
-                Shake.instance.CamShake();
-                return;
-            }
-        }
+        ClearCurrentCard();
+        selectedCategory = null;
     }
 
     public void DrawCard()
     {
-        if (currentCategory == null || availableCards[currentCategory].Count == 0)
+        if (!GameManager.Instance.IsGameActive() || cardSpawnPoint == null) return;
+
+        ClearCurrentCard();
+
+        var availableCategories = categories.FindAll(c => 
+            c.isEnabled && c.cardFacePrefabs != null && c.cardFacePrefabs.Count > 0);
+
+        if (availableCategories.Count == 0)
         {
-            SelectCategory();
+            GameManager.Instance.EndGame();
             return;
         }
 
-        ReleaseCurrentCard();
-
-        int randomIndex = Random.Range(0, availableCards[currentCategory].Count);
-        currentCardObject = Instantiate(
-            availableCards[currentCategory].Dequeue(),
-            cardSpawnPoint.position,
-            cardSpawnPoint.rotation
-        );
+        selectedCategory = availableCategories[Random.Range(0, availableCategories.Count)];
         
-        Vibration.Vibrate(drawVibrationDuration);
-        Shake.instance.CamShake();
-    }
-
-    private void ReleaseCurrentCard()
-    {
-        if (currentCardObject != null)
+        if (selectedCategory.cardBackPrefab != null)
         {
-            Destroy(currentCardObject);
+            currentCard = Instantiate(
+                selectedCategory.cardBackPrefab,
+                cardSpawnPoint.position,
+                cardSpawnPoint.rotation,
+                cardSpawnPoint
+            );
+            
+            // Ensure the card back can be clicked
+            var controller = currentCard.GetComponent<CardController>();
+            if (controller == null)
+            {
+                controller = currentCard.AddComponent<CardController>();
+            }
         }
     }
 
-    public void ResetDeck()
+    public void RevealCard()
     {
-        ReleaseCurrentCard();
-        currentCategory = null;
-        InitializeDeck();
+        if (currentCard == null || selectedCategory == null || 
+            selectedCategory.cardFacePrefabs == null || 
+            selectedCategory.cardFacePrefabs.Count == 0) return;
+
+        Vector3 spawnPos = cardSpawnPoint.position;
+        Quaternion spawnRot = cardSpawnPoint.rotation;
+        Transform parent = cardSpawnPoint;
+
+        Destroy(currentCard);
+
+        int randomIndex = Random.Range(0, selectedCategory.cardFacePrefabs.Count);
+        currentCard = Instantiate(
+            selectedCategory.cardFacePrefabs[randomIndex],
+            spawnPos,
+            spawnRot,
+            parent
+        );
+        selectedCategory.cardFacePrefabs.RemoveAt(randomIndex);
+    }
+
+    public void ToggleCategory(int categoryIndex, bool isOn)
+    {
+        if (categoryIndex >= 0 && categoryIndex < categories.Count)
+        {
+            categories[categoryIndex].isEnabled = isOn;
+        }
+    }
+
+    private void ClearCurrentCard()
+    {
+        if (currentCard != null)
+        {
+            Destroy(currentCard);
+            currentCard = null;
+        }
     }
 }

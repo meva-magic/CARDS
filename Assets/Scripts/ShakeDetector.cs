@@ -10,6 +10,7 @@ public class ShakeDetector : MonoBehaviour
     private void Start()
     {
         sqrShakeThreshold = Mathf.Pow(shakeThreshold, 2);
+        
         spaceAction = new InputAction(binding: "<Keyboard>/space");
         spaceAction.Enable();
         spaceAction.performed += _ => OnShake();
@@ -17,7 +18,9 @@ public class ShakeDetector : MonoBehaviour
 
     private void Update()
     {
-        if (Input.acceleration.sqrMagnitude >= sqrShakeThreshold)
+        if (GameManager.Instance != null && 
+            GameManager.Instance.IsGameActive() && 
+            Input.acceleration.sqrMagnitude >= sqrShakeThreshold)
         {
             OnShake();
         }
@@ -25,14 +28,22 @@ public class ShakeDetector : MonoBehaviour
 
     private void OnShake()
     {
-        if (GameManager.Instance != null && GameManager.Instance.IsGameActive)
+        if (GameManager.Instance != null && 
+            GameManager.Instance.IsGameActive() && 
+            CardManager.Instance != null)
         {
             CardManager.Instance.DrawCard();
+            Vibration.VibratePeek();
+            Shake.instance.ScreenShake();
         }
     }
 
     private void OnDestroy()
     {
-        spaceAction?.Dispose();
+        if (spaceAction != null)
+        {
+            spaceAction.performed -= _ => OnShake();
+            spaceAction.Dispose();
+        }
     }
 }

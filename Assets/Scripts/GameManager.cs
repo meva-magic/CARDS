@@ -1,36 +1,26 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
-using TouchPhase = UnityEngine.InputSystem.TouchPhase;
+using UnityEngine.SceneManagement;
 
-[DefaultExecutionOrder(-100)]
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
     [Header("UI Panels")]
-    [SerializeField] private GameObject menuPanel;
-    [SerializeField] private GameObject gamePanel;
-    [SerializeField] private GameObject pausePanel;
-    [SerializeField] private GameObject endPanel;
+    public GameObject menuPanel;
+    public GameObject gamePanel;
+    public GameObject pausePanel;
+    public GameObject endPanel;
 
-    [Header("UI Buttons")]
-    [SerializeField] private Button startButton;
-    [SerializeField] private Button pauseButton;
-    [SerializeField] private Button continueButton;
-    [SerializeField] private Button restartButtonPause; // Specific to pause panel
-    [SerializeField] private Button menuButtonPause;    // Specific to pause panel
-    [SerializeField] private Button restartButtonEnd;   // Specific to end panel
-    [SerializeField] private Button menuButtonEnd;      // Specific to end panel
-    [SerializeField] private Button[] categoryButtons;
+    [Header("Buttons")]
+    public Button startButton;
+    public Button pauseButton;
+    public Button continueButton;
+    public Button restartButtonPause;
+    public Button restartButtonEnd;
 
-    public bool IsGameActive { get; private set; }
-    public bool IsPaused { get; private set; }
-
-    private Keyboard keyboard;
-    private Touchscreen touchscreen;
-    private string currentSceneName;
+    private bool isGameActive;
+    private bool isPaused;
 
     private void Awake()
     {
@@ -41,139 +31,86 @@ public class GameManager : MonoBehaviour
         }
 
         Instance = this;
-        DontDestroyOnLoad(gameObject);
-        
-        keyboard = Keyboard.current;
-        touchscreen = Touchscreen.current;
-        currentSceneName = SceneManager.GetActiveScene().name;
-        
         InitializeButtons();
     }
 
     private void Start()
     {
-        DisableAllPanels();
-        menuPanel.SetActive(true);
+        ShowMenu();
     }
 
     private void InitializeButtons()
     {
-        // Main Menu
         startButton.onClick.AddListener(StartGame);
-        
-        // Category Buttons
-        foreach (Button btn in categoryButtons)
-        {
-            btn.onClick.AddListener(() => ToggleCategory(btn));
-        }
-        
-        // Game Button
         pauseButton.onClick.AddListener(TogglePause);
-        
-        // Pause Panel Buttons
         continueButton.onClick.AddListener(ContinueGame);
-        restartButtonPause.onClick.AddListener(ResetGame);
-        menuButtonPause.onClick.AddListener(ReturnToMenu);
-        
-        // End Panel Buttons
-        restartButtonEnd.onClick.AddListener(ResetGame);
-        menuButtonEnd.onClick.AddListener(ReturnToMenu);
-    }
-
-    private void ToggleCategory(Button categoryButton)
-    {
-        Vibration.VibratePeek();
-        // Your category toggle implementation
-    }
-
-    private void DisableAllPanels()
-    {
-        menuPanel.SetActive(false);
-        gamePanel.SetActive(false);
-        pausePanel.SetActive(false);
-        endPanel.SetActive(false);
+        restartButtonPause.onClick.AddListener(RestartGame);
+        restartButtonEnd.onClick.AddListener(RestartGame);
     }
 
     public void StartGame()
     {
-        DisableAllPanels();
-        gamePanel.SetActive(true);
-        IsGameActive = true;
-        IsPaused = false;
-        Time.timeScale = 1f;
-        CardManager.Instance.ResetDeck();
-        
-        Vibration.VibratePeek();
-        Shake.instance.CamShake();
-    }
+        if (CardManager.Instance == null)
+        {
+            Debug.LogError("CardManager not initialized!");
+            return;
+        }
 
-    public void ContinueGame()
-    {
-        DisableAllPanels();
-        gamePanel.SetActive(true);
-        IsPaused = false;
+        isGameActive = true;
+        isPaused = false;
         Time.timeScale = 1f;
-        Vibration.VibratePeek();
+        
+        menuPanel.SetActive(false);
+        endPanel.SetActive(false);
+        pausePanel.SetActive(false);
+        gamePanel.SetActive(true);
+        
+        CardManager.Instance.InitializeDeck();
     }
 
     public void TogglePause()
     {
-        IsPaused = !IsPaused;
-        Time.timeScale = IsPaused ? 0f : 1f;
+        isPaused = !isPaused;
+        Time.timeScale = isPaused ? 0f : 1f;
         
-        if (IsPaused)
+        if (isPaused)
         {
-            DisableAllPanels();
             pausePanel.SetActive(true);
+            Vibration.VibratePop();
         }
         else
         {
-            DisableAllPanels();
-            gamePanel.SetActive(true);
+            pausePanel.SetActive(false);
+            Vibration.VibratePeek();
         }
-        
-        Vibration.VibratePop();
-        Shake.instance.CamShake();
+        Shake.instance.ScreenShake();
     }
 
-    public void ShowEndGame()
-    {
-        DisableAllPanels();
-        endPanel.SetActive(true);
-        IsGameActive = false;
-    }
+    public void ContinueGame() => TogglePause();
 
-    public void ResetGame()
+    public void RestartGame()
     {
         Vibration.Vibrate();
-        Shake.instance.CamShake();
-        SceneManager.LoadScene(currentSceneName);
+        Shake.instance.ScreenShake();
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    public void ReturnToMenu()
+    public void EndGame()
     {
-        Vibration.VibratePeek();
-        SceneManager.LoadScene(currentSceneName);
+        isGameActive = false;
+        gamePanel.SetActive(false);
+        endPanel.SetActive(true);
+        Vibration.Vibrate();
+        Shake.instance.ScreenShake();
     }
 
-    private void Update()
+    public void ShowMenu()
     {
-        if (keyboard.escapeKey.wasPressedThisFrame)
-        {
-            if (IsGameActive) TogglePause();
-            else if (menuPanel.activeSelf) ReturnToMenu();
-        }
-        
-        if (touchscreen != null && touchscreen.touches.Count >= 3)
-        {
-            foreach (var touch in touchscreen.touches)
-            {
-                if (touch.phase.ReadValue() == TouchPhase.Began)
-                {
-                    TogglePause();
-                    break;
-                }
-            }
-        }
+        menuPanel.SetActive(true);
+        gamePanel.SetActive(false);
+        endPanel.SetActive(false);
+        pausePanel.SetActive(false);
     }
+
+    public bool IsGameActive() => isGameActive && !isPaused;
 }

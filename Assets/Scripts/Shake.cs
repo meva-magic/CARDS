@@ -3,16 +3,25 @@ using UnityEngine;
 public class Shake : MonoBehaviour
 {
     public Animator camAnim;
-
     public static Shake instance;
 
     private void Awake()
     {
-        instance = this;
+        if (instance == null)
+        {
+            instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
-    public void CamShake()
+    public void ScreenShake()
     {
-        camAnim.SetTrigger("shake");
+        if (camAnim != null)
+        {
+            camAnim.SetTrigger("shake");
+        }
     }
 }

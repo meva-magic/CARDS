@@ -1,43 +1,53 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
-[RequireComponent(typeof(Button))]
-public class CategoryButton : MonoBehaviour
+public class CategoryToggle : MonoBehaviour
 {
-    [Header("References")]
-    [SerializeField] private Image icon;
-    [SerializeField] private TextMeshProUGUI label;
-    [SerializeField] private Image disabledOverlay;
-
-    private Button button;
-    private bool isEnabled = true;
+    [SerializeField] private int categoryIndex;
+    private Toggle toggle;
 
     private void Awake()
     {
-        button = GetComponent<Button>();
-        button.onClick.AddListener(OnButtonPressed);
-        UpdateVisuals();
+        toggle = GetComponent<Toggle>();
+        if (toggle != null)
+        {
+            toggle.SetIsOnWithoutNotify(true);
+            toggle.onValueChanged.AddListener(OnToggleChanged);
+            Debug.Log($"Category toggle {categoryIndex} initialized");
+        }
+        else
+        {
+            Debug.LogError("Toggle component missing!", this);
+        }
     }
 
-    private void OnButtonPressed()
+    private void OnToggleChanged(bool isOn)
     {
-        Vibration.VibratePeek();
-        Shake.instance.CamShake();
-        ToggleCategory();
+        if (CardManager.Instance == null)
+        {
+            Debug.LogWarning("CardManager not ready, queuing toggle update");
+            StartCoroutine(UpdateWhenReady(isOn));
+            return;
+        }
+        UpdateCategory(isOn);
     }
 
-    private void ToggleCategory()
+    private System.Collections.IEnumerator UpdateWhenReady(bool isOn)
     {
-        isEnabled = !isEnabled;
-        UpdateVisuals();
+        yield return new WaitUntil(() => CardManager.Instance != null);
+        UpdateCategory(isOn);
     }
 
-    private void UpdateVisuals()
+    private void UpdateCategory(bool isOn)
     {
-        if (disabledOverlay != null)
-            disabledOverlay.gameObject.SetActive(!isEnabled);
+        CardManager.Instance.ToggleCategory(categoryIndex, isOn);
     }
 
-    public bool IsEnabled => isEnabled;
+    private void OnDestroy()
+    {
+        if (toggle != null)
+        {
+            toggle.onValueChanged.RemoveListener(OnToggleChanged);
+        }
+    }
 }
