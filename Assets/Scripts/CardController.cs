@@ -4,6 +4,8 @@ using UnityEngine.EventSystems;
 [RequireComponent(typeof(BoxCollider2D))]
 public class CardController : MonoBehaviour, IPointerDownHandler
 {
+    private bool isRevealed = false;
+
     public void OnPointerDown(PointerEventData eventData)
     {
         if (GameManager.Instance == null || !GameManager.Instance.IsGameActive())
@@ -11,9 +13,20 @@ public class CardController : MonoBehaviour, IPointerDownHandler
 
         if (CardManager.Instance != null && Shake.instance != null)
         {
-            CardManager.Instance.RevealCard();
-            Vibration.VibratePop();
-            Shake.instance.ScreenShake();
+            if (!isRevealed)
+            {
+                CardManager.Instance.RevealCard();
+                isRevealed = true;
+            }
+            else
+            {
+                Shake.instance.ScreenShake();
+            }
         }
+    }
+
+    public void ResetCard()
+    {
+        isRevealed = false;
     }
 }

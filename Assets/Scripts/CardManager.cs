@@ -45,8 +45,7 @@ public class CardManager : MonoBehaviour
 
         ClearCurrentCard();
 
-        var availableCategories = categories.FindAll(c => 
-            c.isEnabled && c.cardFacePrefabs != null && c.cardFacePrefabs.Count > 0);
+        var availableCategories = categories.FindAll(c => c.isEnabled && c.cardFacePrefabs.Count > 0);
 
         if (availableCategories.Count == 0)
         {
@@ -58,51 +57,42 @@ public class CardManager : MonoBehaviour
         
         if (selectedCategory.cardBackPrefab != null)
         {
-            currentCard = Instantiate(
-                selectedCategory.cardBackPrefab,
-                cardSpawnPoint.position,
-                cardSpawnPoint.rotation,
-                cardSpawnPoint
-            );
-
-            // Ensure the card can be clicked
+            currentCard = Instantiate(selectedCategory.cardBackPrefab, cardSpawnPoint.position, cardSpawnPoint.rotation, cardSpawnPoint);
+            
             var controller = currentCard.GetComponent<CardController>();
             if (controller == null)
             {
                 controller = currentCard.AddComponent<CardController>();
             }
 
-            // Add collider if missing
             var collider = currentCard.GetComponent<BoxCollider2D>();
             if (collider == null)
             {
                 collider = currentCard.AddComponent<BoxCollider2D>();
-                collider.size = new Vector2(100f, 150f); // Set to your card size
+                collider.size = new Vector2(100f, 150f);
             }
         }
     }
 
     public void RevealCard()
     {
-        if (currentCard == null || selectedCategory == null || 
-            selectedCategory.cardFacePrefabs == null || 
-            selectedCategory.cardFacePrefabs.Count == 0)
+        if (currentCard == null || selectedCategory == null || selectedCategory.cardFacePrefabs.Count == 0)
             return;
-
-        Vector3 position = cardSpawnPoint.position;
-        Quaternion rotation = cardSpawnPoint.rotation;
-        Transform parent = cardSpawnPoint;
 
         Destroy(currentCard);
 
         int randomIndex = Random.Range(0, selectedCategory.cardFacePrefabs.Count);
-        currentCard = Instantiate(
-            selectedCategory.cardFacePrefabs[randomIndex],
-            position,
-            rotation,
-            parent
-        );
+        currentCard = Instantiate(selectedCategory.cardFacePrefabs[randomIndex], cardSpawnPoint.position, cardSpawnPoint.rotation, cardSpawnPoint);
+        
+        var controller = currentCard.GetComponent<CardController>();
+        if (controller == null)
+        {
+            controller = currentCard.AddComponent<CardController>();
+        }
+        controller.ResetCard();
+
         selectedCategory.cardFacePrefabs.RemoveAt(randomIndex);
+        Shake.instance.ScreenShake();
     }
 
     public void ToggleCategory(int categoryIndex, bool isOn)
@@ -113,13 +103,14 @@ public class CardManager : MonoBehaviour
         }
     }
 
-    private void ClearCurrentCard()
+    public bool HasEnabledCategories()
     {
-        if (currentCard != null)
+        foreach (var category in categories)
         {
-            Destroy(currentCard);
-            currentCard = null;
+            if (category.isEnabled)
+                return true;
         }
+        return false;
     }
 
     public bool HasCardsRemaining()
@@ -130,5 +121,14 @@ public class CardManager : MonoBehaviour
                 return true;
         }
         return false;
+    }
+
+    private void ClearCurrentCard()
+    {
+        if (currentCard != null)
+        {
+            Destroy(currentCard);
+            currentCard = null;
+        }
     }
 }

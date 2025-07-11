@@ -24,7 +24,6 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        // Singleton pattern
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -38,19 +37,17 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         ShowMenu();
-        Time.timeScale = 1f; // Ensure game starts at normal time scale
+        Time.timeScale = 1f;
     }
 
     private void InitializeButtons()
     {
-        // Clear any existing listeners to prevent duplicates
         startButton.onClick.RemoveAllListeners();
         pauseButton.onClick.RemoveAllListeners();
         continueButton.onClick.RemoveAllListeners();
         restartButtonPause.onClick.RemoveAllListeners();
         restartButtonEnd.onClick.RemoveAllListeners();
 
-        // Add new listeners
         startButton.onClick.AddListener(StartGame);
         pauseButton.onClick.AddListener(PauseGame);
         continueButton.onClick.AddListener(ContinueGame);
@@ -60,6 +57,12 @@ public class GameManager : MonoBehaviour
 
     public void StartGame()
     {
+        if (CardManager.Instance != null && !CardManager.Instance.HasEnabledCategories())
+        {
+            EndGame();
+            return;
+        }
+
         isGameActive = true;
         isPaused = false;
         Time.timeScale = 1f;
@@ -74,7 +77,7 @@ public class GameManager : MonoBehaviour
             CardManager.Instance.ResetDeck();
         }
         
-        Vibration.VibratePeek();
+        Shake.instance.ScreenShake();
     }
 
     public void PauseGame()
@@ -83,39 +86,21 @@ public class GameManager : MonoBehaviour
 
         isPaused = true;
         Time.timeScale = 0f;
-        
-        // Only activate pause panel - game panel remains active
         pausePanel.SetActive(true);
-        
-        Vibration.VibratePop();
-        if (Shake.instance != null)
-        {
-            Shake.instance.ScreenShake();
-        }
+        Shake.instance.ScreenShake();
     }
 
     public void ContinueGame()
     {
         isPaused = false;
         Time.timeScale = 1f;
-        
-        // Only deactivate pause panel - game panel stays active
         pausePanel.SetActive(false);
-        
-        Vibration.VibratePeek();
-        if (Shake.instance != null)
-        {
-            Shake.instance.ScreenShake();
-        }
+        Shake.instance.ScreenShake();
     }
 
     public void RestartGame()
     {
-        Vibration.Vibrate();
-        if (Shake.instance != null)
-        {
-            Shake.instance.ScreenShake();
-        }
+        Shake.instance.ScreenShake();
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
@@ -124,12 +109,7 @@ public class GameManager : MonoBehaviour
         isGameActive = false;
         gamePanel.SetActive(false);
         endPanel.SetActive(true);
-        
-        Vibration.Vibrate();
-        if (Shake.instance != null)
-        {
-            Shake.instance.ScreenShake();
-        }
+        Shake.instance.ScreenShake();
     }
 
     public void ShowMenu()
@@ -148,7 +128,6 @@ public class GameManager : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Clean up static instance when destroyed
         if (Instance == this)
         {
             Instance = null;

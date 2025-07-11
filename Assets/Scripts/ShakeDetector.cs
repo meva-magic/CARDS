@@ -44,7 +44,6 @@ public class ShakeDetector : MonoBehaviour
             return;
 
         CardManager.Instance.DrawCard();
-        Vibration.VibratePeek();
         Shake.instance.ScreenShake();
     }
 

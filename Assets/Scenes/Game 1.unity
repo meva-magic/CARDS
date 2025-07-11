@@ -389,6 +389,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  enableVibration: 1
+  vibrationType: 0
 --- !u!1 &1043810068
 GameObject:
   m_ObjectHideFlags: 0
@@ -1588,6 +1590,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  enableVibration: 1
+  vibrationType: 0
 --- !u!224 &3557200371984431534
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2419,6 +2423,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  enableVibration: 1
+  vibrationType: 0
 --- !u!1001 &6274029327726128006
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2581,6 +2587,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  enableVibration: 1
+  vibrationType: 0
 --- !u!1 &6879712777853343050
 GameObject:
   m_ObjectHideFlags: 0

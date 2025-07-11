@@ -5,14 +5,16 @@ using System.Collections;
 public class Shake : MonoBehaviour
 {
     [Header("Shake Settings")]
-    [Tooltip("Total duration of shake sequence")]
     public float shakeDuration = 0.5f;
-    [Tooltip("Maximum rotation angle in degrees")]
     public float maxAngle = 2f;
-    [Tooltip("Use animation curve for custom patterns")]
     public bool useCurve = true;
-    [Tooltip("Custom shake pattern (0→1→0→-1→0 by default)")]
     public AnimationCurve shakeCurve;
+    
+    [Header("Vibration Settings")]
+    public bool enableVibration = true;
+    public VibrationType vibrationType = VibrationType.Pop;
+    
+    public enum VibrationType { Pop, Peek, Normal }
 
     private RectTransform rectTransform;
     private Quaternion originalRotation;
@@ -22,7 +24,6 @@ public class Shake : MonoBehaviour
     void Awake()
     {
         instance = this;
-        
         rectTransform = GetComponent<RectTransform>();
         originalRotation = rectTransform.localRotation;
         
@@ -47,6 +48,22 @@ public class Shake : MonoBehaviour
     {
         StopAllCoroutines();
         StartCoroutine(DoShakeAnimation());
+        
+        if (enableVibration)
+        {
+            switch (vibrationType)
+            {
+                case VibrationType.Pop:
+                    Vibration.VibratePop();
+                    break;
+                case VibrationType.Peek:
+                    Vibration.VibratePeek();
+                    break;
+                case VibrationType.Normal:
+                    Vibration.Vibrate();
+                    break;
+            }
+        }
     }
 
     IEnumerator DoShakeAnimation()
@@ -65,9 +82,7 @@ public class Shake : MonoBehaviour
         }
         else
         {
-            // Linear 0→2→0→-2→0 sequence
             float segmentDuration = shakeDuration / 4f;
-            
             yield return RotateTo(originalRotation.eulerAngles.z, maxAngle, segmentDuration);
             yield return RotateTo(maxAngle, 0f, segmentDuration);
             yield return RotateTo(0f, -maxAngle, segmentDuration);
@@ -91,7 +106,6 @@ public class Shake : MonoBehaviour
 
     void OnDisable()
     {
-        // Reset rotation when disabled
         rectTransform.localRotation = originalRotation;
     }
 }
