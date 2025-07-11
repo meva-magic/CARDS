@@ -24,6 +24,7 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
+        // Singleton pattern
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -37,12 +38,21 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         ShowMenu();
+        Time.timeScale = 1f; // Ensure game starts at normal time scale
     }
 
     private void InitializeButtons()
     {
+        // Clear any existing listeners to prevent duplicates
+        startButton.onClick.RemoveAllListeners();
+        pauseButton.onClick.RemoveAllListeners();
+        continueButton.onClick.RemoveAllListeners();
+        restartButtonPause.onClick.RemoveAllListeners();
+        restartButtonEnd.onClick.RemoveAllListeners();
+
+        // Add new listeners
         startButton.onClick.AddListener(StartGame);
-        pauseButton.onClick.AddListener(TogglePause);
+        pauseButton.onClick.AddListener(PauseGame);
         continueButton.onClick.AddListener(ContinueGame);
         restartButtonPause.onClick.AddListener(RestartGame);
         restartButtonEnd.onClick.AddListener(RestartGame);
@@ -59,33 +69,53 @@ public class GameManager : MonoBehaviour
         pausePanel.SetActive(false);
         gamePanel.SetActive(true);
         
-        CardManager.Instance.ResetDeck(); // Initialize the deck
-    }
-
-    public void TogglePause()
-    {
-        isPaused = !isPaused;
-        Time.timeScale = isPaused ? 0f : 1f;
+        if (CardManager.Instance != null)
+        {
+            CardManager.Instance.ResetDeck();
+        }
         
-        if (isPaused)
-        {
-            pausePanel.SetActive(true);
-            Vibration.VibratePop();
-        }
-        else
-        {
-            pausePanel.SetActive(false);
-            Vibration.VibratePeek();
-        }
-        Shake.instance.ScreenShake();
+        Vibration.VibratePeek();
     }
 
-    public void ContinueGame() => TogglePause();
+    public void PauseGame()
+    {
+        if (!isGameActive) return;
+
+        isPaused = true;
+        Time.timeScale = 0f;
+        
+        gamePanel.SetActive(false);
+        pausePanel.SetActive(true);
+        
+        Vibration.VibratePop();
+        if (Shake.instance != null)
+        {
+            Shake.instance.ScreenShake();
+        }
+    }
+
+    public void ContinueGame()
+    {
+        isPaused = false;
+        Time.timeScale = 1f;
+        
+        pausePanel.SetActive(false);
+        gamePanel.SetActive(true);
+        
+        Vibration.VibratePeek();
+        if (Shake.instance != null)
+        {
+            Shake.instance.ScreenShake();
+        }
+    }
 
     public void RestartGame()
     {
         Vibration.Vibrate();
-        Shake.instance.ScreenShake();
+        if (Shake.instance != null)
+        {
+            Shake.instance.ScreenShake();
+        }
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
@@ -94,12 +124,20 @@ public class GameManager : MonoBehaviour
         isGameActive = false;
         gamePanel.SetActive(false);
         endPanel.SetActive(true);
+        
         Vibration.Vibrate();
-        Shake.instance.ScreenShake();
+        if (Shake.instance != null)
+        {
+            Shake.instance.ScreenShake();
+        }
     }
 
     public void ShowMenu()
     {
+        isGameActive = false;
+        isPaused = false;
+        Time.timeScale = 1f;
+        
         menuPanel.SetActive(true);
         gamePanel.SetActive(false);
         endPanel.SetActive(false);
@@ -107,4 +145,13 @@ public class GameManager : MonoBehaviour
     }
 
     public bool IsGameActive() => isGameActive && !isPaused;
+
+    private void OnDestroy()
+    {
+        // Clean up static instance when destroyed
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
 }
