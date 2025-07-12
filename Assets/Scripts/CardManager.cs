@@ -20,6 +20,7 @@ public class CardManager : MonoBehaviour
 
     private GameObject currentCard;
     private CardCategory selectedCategory;
+    private bool isCardRevealed = false;
 
     private void Awake()
     {
@@ -37,6 +38,7 @@ public class CardManager : MonoBehaviour
     {
         ClearCurrentCard();
         selectedCategory = null;
+        isCardRevealed = false;
     }
 
     public void DrawCard()
@@ -44,8 +46,10 @@ public class CardManager : MonoBehaviour
         if (!GameManager.Instance.IsGameActive() || cardSpawnPoint == null) return;
 
         ClearCurrentCard();
+        isCardRevealed = false;
 
-        var availableCategories = categories.FindAll(c => c.isEnabled && c.cardFacePrefabs.Count > 0);
+        var availableCategories = categories.FindAll(c => 
+            c.isEnabled && c.cardFacePrefabs != null && c.cardFacePrefabs.Count > 0);
 
         if (availableCategories.Count == 0)
         {
@@ -57,18 +61,20 @@ public class CardManager : MonoBehaviour
         
         if (selectedCategory.cardBackPrefab != null)
         {
-            currentCard = Instantiate(selectedCategory.cardBackPrefab, cardSpawnPoint.position, cardSpawnPoint.rotation, cardSpawnPoint);
-            
-            var controller = currentCard.GetComponent<CardController>();
-            if (controller == null)
-            {
-                controller = currentCard.AddComponent<CardController>();
-            }
+            currentCard = Instantiate(
+                selectedCategory.cardBackPrefab,
+                cardSpawnPoint.position,
+                cardSpawnPoint.rotation,
+                cardSpawnPoint
+            );
 
-            var collider = currentCard.GetComponent<BoxCollider2D>();
-            if (collider == null)
+            // Add controller to back card
+            var controller = currentCard.AddComponent<CardController>();
+            
+            // Add collider if missing
+            if (currentCard.GetComponent<BoxCollider2D>() == null)
             {
-                collider = currentCard.AddComponent<BoxCollider2D>();
+                var collider = currentCard.AddComponent<BoxCollider2D>();
                 collider.size = new Vector2(100f, 150f);
             }
         }
@@ -76,23 +82,47 @@ public class CardManager : MonoBehaviour
 
     public void RevealCard()
     {
-        if (currentCard == null || selectedCategory == null || selectedCategory.cardFacePrefabs.Count == 0)
+        if (isCardRevealed || currentCard == null || selectedCategory == null || 
+            selectedCategory.cardFacePrefabs == null || 
+            selectedCategory.cardFacePrefabs.Count == 0)
             return;
+
+        Vector3 position = cardSpawnPoint.position;
+        Quaternion rotation = cardSpawnPoint.rotation;
+        Transform parent = cardSpawnPoint;
 
         Destroy(currentCard);
 
         int randomIndex = Random.Range(0, selectedCategory.cardFacePrefabs.Count);
-        currentCard = Instantiate(selectedCategory.cardFacePrefabs[randomIndex], cardSpawnPoint.position, cardSpawnPoint.rotation, cardSpawnPoint);
+        currentCard = Instantiate(
+            selectedCategory.cardFacePrefabs[randomIndex],
+            position,
+            rotation,
+            parent
+        );
+
+        // Add controller to face card
+        var controller = currentCard.AddComponent<CardController>();
         
-        var controller = currentCard.GetComponent<CardController>();
-        if (controller == null)
+        // Add collider if missing
+        if (currentCard.GetComponent<BoxCollider2D>() == null)
         {
-            controller = currentCard.AddComponent<CardController>();
+            var collider = currentCard.AddComponent<BoxCollider2D>();
+            collider.size = new Vector2(100f, 150f);
         }
-        controller.ResetCard();
 
         selectedCategory.cardFacePrefabs.RemoveAt(randomIndex);
-        Shake.instance.ScreenShake();
+        isCardRevealed = true;
+    }
+
+    public void HandleCardPress()
+    {
+        if (!isCardRevealed)
+        {
+            RevealCard();
+        }
+        
+        // Screen shake is handled by CardController
     }
 
     public void ToggleCategory(int categoryIndex, bool isOn)
